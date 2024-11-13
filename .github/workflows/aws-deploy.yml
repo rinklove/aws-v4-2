@@ -31,3 +31,32 @@ jobs:
       - name: build gradle
         run: ./gradlew clean build
         shell: bash
+
+      - name: Get current time
+        uses: 1466587594/get-current-time@v2
+        id: current-time
+        with:
+          format: YYYY-MM-DDTHH-mm-ss
+          utcOffset: "+09:00"
+
+
+      - name: Make deploy package
+        run: | 
+          mkdir -p deploy
+          cp build/libs/*.jar deploy/application.jar
+          cp Procfile deploy/Procfile
+          cp -r .ebextensions deploy/.ebextensions
+          cd deploy && zip -r deploy.zip
+
+      # elastic beanstalk에 deploy.zip 보내기
+      # IAM 사용자 필요
+      - name: Deploy to elastic beanstalk
+        uses: einaregilsson/beanstalk-deploy@v22
+        with:
+          aws-access-key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          application_name: aws1113-practice
+          environment_name: Aws1113-practice-env
+          version_label: github-action-${{ steps.current-time }}
+          region: ap-northeast-2
+          deployment_package: deploy/deploy.zip
